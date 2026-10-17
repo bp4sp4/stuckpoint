@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Stats } from "@/lib/aggregate";
 import { TYPE_INFO, TYPES } from "@/lib/labels";
@@ -8,9 +9,9 @@ import Overlay from "./Overlay";
 import s from "./dashboard.module.css";
 
 const RANGES = [
-  { id: "1h", label: "1시간" },
-  { id: "24h", label: "24시간" },
+  { id: "all", label: "전체" },
   { id: "7d", label: "7일" },
+  { id: "24h", label: "24시간" },
 ];
 
 const DEMO_PAGES = ["/demo", "/demo/fixed"];
@@ -23,8 +24,14 @@ function ago(ts: number) {
   return `${Math.round(sec / 86400)}일 전`;
 }
 
-export default function Dashboard() {
-  const [range, setRange] = useState("24h");
+/**
+ * projectKey: 지금 보는 프로젝트 (주소의 ?key=). projects: 이 서버가 받는 프로젝트 목록.
+ * demo 프로젝트에만 "화면 위에서 보기"와 고치기 전후 비교가 있다 (같은 도메인의 데모 페이지라 iframe으로 띄울 수 있어서).
+ */
+export default function Dashboard({ projectKey, projects, origin }: { projectKey: string; projects: string[]; origin: string }) {
+  const router = useRouter();
+  const isDemo = projectKey === "demo";
+  const [range, setRange] = useState("all");
   const [stats, setStats] = useState<Stats | null>(null);
   const [failed, setFailed] = useState(false);
   const [page, setPage] = useState("/demo");
@@ -32,9 +39,10 @@ export default function Dashboard() {
   // 3초마다 새로 받아온다 → 다른 탭에서 데모를 만지면 여기 숫자가 바로 오른다
   useEffect(() => {
     let alive = true;
+    setStats(null);
     const load = async () => {
       try {
-        const res = await fetch(`/api/stats?key=demo&range=${range}`, { cache: "no-store" });
+        const res = await fetch(`/api/stats?key=${encodeURIComponent(projectKey)}&range=${range}`, { cache: "no-store" });
         if (!res.ok) throw new Error(String(res.status));
         const data = (await res.json()) as Stats;
         if (alive) {
@@ -51,7 +59,7 @@ export default function Dashboard() {
       alive = false;
       clearInterval(t);
     };
-  }, [range]);
+  }, [range, projectKey]);
 
   const empty = stats && stats.total === 0;
   const broken = stats?.pages.find((p) => p.page === "/demo");
@@ -65,13 +73,28 @@ export default function Dashboard() {
           <Link href="/" className={s.brand}>
             Stuckpoint
           </Link>
-          <span className={s.project}>demo 프로젝트</span>
+          <label className={s.project}>
+            <span>프로젝트</span>
+            <select value={projectKey} onChange={(e) => router.push(`/dashboard?key=${encodeURIComponent(e.target.value)}`)}>
+              {projects.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          </label>
           <span className={s.live}>
             <i /> 3초마다 갱신
           </span>
           <div className={s.tabs} role="tablist">
             {RANGES.map((r) => (
-              <button key={r.id} role="tab" aria-selected={range === r.id} className={range === r.id ? s.tab_on : s.tab} onClick={() => setRange(r.id)}>
+              <button
+                key={r.id}
+                role="tab"
+                aria-selected={range === r.id}
+                className={range === r.id ? s.tab_on : s.tab}
+                onClick={() => setRange(r.id)}
+              >
                 {r.label}
               </button>
             ))}
@@ -103,7 +126,12 @@ export default function Dashboard() {
         {empty && (
           <section className={s.empty}>
             <p>아직 이 기간에 기록이 없어요.</p>
-            <Link href="/demo">불편한 결제 화면에서 막혀 보기 →</Link>
+            {isDemo ? (
+              <Link href="/demo">불편한 결제 화면에서 막혀 보기 →</Link>
+            ) : (
+              <pre className={s.snippet}>{`<script src="${origin}/stuckpoint.global.js"
+        data-key="${projectKey}" defer></script>`}</pre>
+            )}
           </section>
         )}
 
@@ -140,30 +168,56 @@ export default function Dashboard() {
               </ol>
             </section>
 
-            {/* 화면 위에서 보기 */}
-            <section className={s.section}>
-              <div className={s.section_head}>
-                <h2>화면 위에서 보기</h2>
-                <div className={s.tabs}>
-                  {DEMO_PAGES.map((p) => (
-                    <button key={p} className={page === p ? s.tab_on : s.tab} onClick={() => setPage(p)}>
-                      {p === "/demo" ? "고장난 버전" : "고친 버전"}
-                    </button>
-                  ))}
+            {/* 페이지별 (모든 프로젝트) */}
+            {!isDemo && (
+              <section className={s.section}>
+                <div className={s.section_head}>
+                  <h2>페이지별</h2>
+                  <p>페이지를 연 방문 중 한 번이라도 막힌 방문의 비율이에요.</p>
                 </div>
-              </div>
-              <div className={s.legend}>
-                {TYPES.map((t) => (
-                  <span key={t}>
-                    <i className={`dot dot-${t}`} /> {TYPE_INFO[t].name}
-                  </span>
-                ))}
-                <span>원 크기 = 겪은 방문 수</span>
-              </div>
-              <Overlay page={page} stats={stats} />
-            </section>
+                <ul className={s.pages}>
+                  {stats.pages.map((p) => (
+                    <li key={p.page}>
+                      <code>{p.page}</code>
+                      <div className={s.bar_track}>
+                        <div style={{ width: rate(p) === "–" ? 0 : rate(p) }} />
+                      </div>
+                      <b>{rate(p)}</b>
+                      <em>
+                        방문 {p.visits} · 막힘 {p.events}건
+                      </em>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-            <div className={s.two}>
+            {/* 화면 위에서 보기 (demo) */}
+            {isDemo && (
+              <section className={s.section}>
+                <div className={s.section_head}>
+                  <h2>화면 위에서 보기</h2>
+                  <div className={s.tabs}>
+                    {DEMO_PAGES.map((p) => (
+                      <button key={p} className={page === p ? s.tab_on : s.tab} onClick={() => setPage(p)}>
+                        {p === "/demo" ? "고장난 버전" : "고친 버전"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className={s.legend}>
+                  {TYPES.map((t) => (
+                    <span key={t}>
+                      <i className={`dot dot-${t}`} /> {TYPE_INFO[t].name}
+                    </span>
+                  ))}
+                  <span>원 크기 = 겪은 방문 수</span>
+                </div>
+                <Overlay page={page} stats={stats} />
+              </section>
+            )}
+
+            <div className={isDemo ? s.two : undefined}>
               {/* 폼 이탈 */}
               <section className={s.section}>
                 <div className={s.section_head}>
@@ -194,28 +248,30 @@ export default function Dashboard() {
                 ))}
               </section>
 
-              {/* 고치기 전후 */}
-              <section className={s.section}>
-                <div className={s.section_head}>
-                  <h2>고치기 전 · 후</h2>
-                  <p>페이지를 연 방문 중 한 번이라도 막힌 방문의 비율이에요.</p>
-                </div>
-                <div className={s.compare}>
-                  <div>
-                    <span>고장난 버전</span>
-                    <b>{rate(broken)}</b>
-                    <em>{broken ? `방문 ${broken.visits}번 중 ${broken.stuckVisits}번 · 막힘 ${broken.events}건` : "기록 없음"}</em>
+              {/* 고치기 전후 (demo) */}
+              {isDemo && (
+                <section className={s.section}>
+                  <div className={s.section_head}>
+                    <h2>고치기 전 · 후</h2>
+                    <p>페이지를 연 방문 중 한 번이라도 막힌 방문의 비율이에요.</p>
                   </div>
-                  <div className={s.compare_good}>
-                    <span>고친 버전</span>
-                    <b>{rate(fixed)}</b>
-                    <em>{fixed ? `방문 ${fixed.visits}번 중 ${fixed.stuckVisits}번 · 막힘 ${fixed.events}건` : "기록 없음"}</em>
+                  <div className={s.compare}>
+                    <div>
+                      <span>고장난 버전</span>
+                      <b>{rate(broken)}</b>
+                      <em>{broken ? `방문 ${broken.visits}번 중 ${broken.stuckVisits}번 · 막힘 ${broken.events}건` : "기록 없음"}</em>
+                    </div>
+                    <div className={s.compare_good}>
+                      <span>고친 버전</span>
+                      <b>{rate(fixed)}</b>
+                      <em>{fixed ? `방문 ${fixed.visits}번 중 ${fixed.stuckVisits}번 · 막힘 ${fixed.events}건` : "기록 없음"}</em>
+                    </div>
                   </div>
-                </div>
-                <Link href="/demo/fixed" className={s.more}>
-                  고친 버전 써 보기 →
-                </Link>
-              </section>
+                  <Link href="/demo/fixed" className={s.more}>
+                    고친 버전 써 보기 →
+                  </Link>
+                </section>
+              )}
             </div>
 
             {/* 실시간 기록 */}
