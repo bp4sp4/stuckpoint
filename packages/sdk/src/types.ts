@@ -51,6 +51,8 @@ export interface StuckpointOptions {
   ignore?: string;
   /** 감지할 때마다 콘솔에 출력 */
   debug?: boolean;
+  /** 링크 · 버튼 클릭을 모두 기록한다 (어디를 많이 누르는지 보려고). 기본 false */
+  trackClicks?: boolean;
   /** 서버로 보내기 전에 이벤트를 받아본다 (데모 · 테스트용). false를 돌려주면 보내지 않음 */
   onEvent?: (event: StuckEvent) => void | false;
 }
@@ -67,7 +69,21 @@ export interface VisitEvent {
   ts: number;
 }
 
-export type Payload = StuckEvent | VisitEvent;
+/** 클릭 기록 (trackClicks). 링크면 이동할 주소(쿼리 · 해시 제외)를 함께 남긴다 */
+export interface ClickEvent {
+  type: "click";
+  page: string;
+  selector: string;
+  label: string;
+  href?: string;
+  x: number;
+  y: number;
+  vw: number;
+  sid: string;
+  ts: number;
+}
+
+export type Payload = StuckEvent | VisitEvent | ClickEvent;
 
 /** page를 넘기면 그 값을 쓴다 (행동한 시점의 페이지. 감지가 늦게 끝나 주소가 바뀌었어도 정확하게) */
 export type Emit = (event: Omit<StuckEvent, "page" | "sid" | "ts" | "vw"> & { page?: string }) => void;

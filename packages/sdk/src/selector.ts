@@ -50,6 +50,10 @@ const LABEL_MAX = 40;
 export function getLabel(el: Element): string {
   if (el.closest("[data-stuckpoint-mask]")) return `<${el.tagName.toLowerCase()}>`;
 
+  // 직접 붙인 이름표가 있으면 그것을 쓴다 (같은 "자세히 보기" 버튼이 여러 개일 때 구분용)
+  const named = el.closest("[data-stuckpoint-label]");
+  if (named) return (named.getAttribute("data-stuckpoint-label") || "").trim().slice(0, LABEL_MAX);
+
   const aria = el.getAttribute("aria-label") || el.getAttribute("title") || el.getAttribute("alt");
   if (aria) return aria.trim().slice(0, LABEL_MAX);
 

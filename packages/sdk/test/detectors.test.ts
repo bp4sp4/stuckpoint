@@ -262,8 +262,100 @@ describe("페이지 · 방문", () => {
     await settle(150);
     sp.flush();
     expect(sent).toEqual(["visit:/a", "visit:/b"]);
+  });
+
+  it("감싸기를 거치지 않은 주소 변경(프레임워크 내부)도 1초 안에 방문으로 센다", async () => {
+    const sent: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: { body: string }) => {
+        sent.push(...(JSON.parse(init.body).events as { type: string; page: string }[]).map((e) => `${e.type}:${e.page}`));
+        return new Response(null, { status: 204 });
+      })
+    );
+    history.replaceState(null, "", "/home");
+    const original = History.prototype.pushState;
+    start();
+    original.call(history, null, "", "/inner"); // 감싼 함수를 우회
+    await settle(1100);
+    sp.flush();
+    expect(sent).toEqual(["visit:/home", "visit:/inner"]);
     vi.unstubAllGlobals();
     history.replaceState(null, "", "/");
+    vi.unstubAllGlobals();
+    history.replaceState(null, "", "/");
+  });
+});
+
+describe("클릭 기록 · 제외", () => {
+  function captureSent() {
+    const sent: Record<string, unknown>[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: { body: string }) => {
+        sent.push(...(JSON.parse(init.body).events as Record<string, unknown>[]));
+        return new Response(null, { status: 204 });
+      })
+    );
+    return sent;
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    localStorage.clear();
+    history.replaceState(null, "", "/");
+  });
+
+  it("trackClicks를 켜면 링크 · 버튼 클릭을 이름표와 이동 주소(쿼리 제외)와 함께 남긴다", () => {
+    const sent = captureSent();
+    document.body.innerHTML = `
+      <a id="gh" href="https://github.com/me/repo?tab=1#top">GitHub ↗</a>
+      <div data-stuckpoint-label="한평생 오피스 · 프로젝트 보기"><a id="more" href="/project/office">프로젝트 보기 →</a></div>
+      <a id="mail" href="mailto:me@example.com">메일</a>
+      <p id="txt">그냥 글자</p>`;
+    start({ trackClicks: true });
+    ["gh", "more", "mail", "txt"].forEach((id) => click(document.getElementById(id)!));
+    sp.flush();
+
+    const clicks = sent.filter((e) => e.type === "click");
+    expect(clicks.map((e) => [e.label, e.href])).toEqual([
+      ["GitHub ↗", "https://github.com/me/repo"],
+      ["한평생 오피스 · 프로젝트 보기", "/project/office"],
+      ["메일", "mailto:"],
+    ]);
+    expect(JSON.stringify(sent)).not.toContain("me@example.com");
+  });
+
+  it("trackClicks를 켜지 않으면 클릭은 남기지 않는다", () => {
+    const sent = captureSent();
+    document.body.innerHTML = `<a id="gh" href="/x">x</a>`;
+    start();
+    click(document.getElementById("gh")!);
+    sp.flush();
+    expect(sent.filter((e) => e.type === "click")).toHaveLength(0);
+  });
+
+  it("?stuckpoint=off로 한 번 열면 이 브라우저는 계속 기록하지 않고, on으로 되돌린다", async () => {
+    document.body.innerHTML = `<button id="b">B</button>`;
+    history.replaceState(null, "", "/?stuckpoint=off");
+    start();
+    click(document.getElementById("b")!);
+    await settle(1100);
+    expect(events).toHaveLength(0);
+    sp.destroy();
+
+    history.replaceState(null, "", "/"); // 주소에 표시가 없어도 계속 빠진다
+    start();
+    click(document.getElementById("b")!);
+    await settle(1100);
+    expect(events).toHaveLength(0);
+    sp.destroy();
+
+    history.replaceState(null, "", "/?stuckpoint=on");
+    start();
+    click(document.getElementById("b")!);
+    await settle(1100);
+    expect(events).toHaveLength(1);
   });
 });
 

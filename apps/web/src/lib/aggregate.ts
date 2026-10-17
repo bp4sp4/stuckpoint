@@ -32,6 +32,17 @@ export interface PageStat {
   events: number;
 }
 
+/** 많이 누른 곳 (trackClicks를 켠 프로젝트만) */
+export interface ClickSpot {
+  page: string;
+  selector: string;
+  label: string;
+  href?: string;
+  clicks: number;
+  visitors: number;
+  last: number;
+}
+
 export interface Stats {
   /** 감지된 막힘 수 (방문 기록 제외) */
   total: number;
@@ -41,20 +52,25 @@ export interface Stats {
   pages: PageStat[];
   hotspots: Hotspot[];
   forms: FormDropoff[];
+  clicks: ClickSpot[];
   recent: (StoredEvent & { type: StuckType })[];
 }
 
 const EMPTY: Record<StuckType, number> = { rage_click: 0, dead_click: 0, form_abandon: 0, error_click: 0 };
 
 type Stuck = StoredEvent & { type: StuckType };
-const isStuck = (e: StoredEvent): e is Stuck => e.type !== "visit";
+const isStuck = (e: StoredEvent): e is Stuck => e.type !== "visit" && e.type !== "click";
 
 /** 이벤트 목록 → 대시보드 숫자. "어디서 · 몇 명이 · 어떻게" 막혔는지로 묶는다 */
 export function aggregate(all: StoredEvent[]): Stats {
   const byType = { ...EMPTY };
   const spots = new Map<string, Hotspot & { sids: Set<string>; countSum: number; msgs: Map<string, number> }>();
-  const forms = new Map<string, { page: string; form: string; abandons: number; fields: Map<string, { label: string; field: string; count: number; progress: number }> }>();
+  const forms = new Map<
+    string,
+    { page: string; form: string; abandons: number; fields: Map<string, { label: string; field: string; count: number; progress: number }> }
+  >();
   const pages = new Map<string, { visits: Set<string>; stuck: Set<string>; events: number }>();
+  const clicks = new Map<string, Omit<ClickSpot, "visitors"> & { sids: Set<string> }>();
   const visitSids = new Set<string>();
   const stuckSids = new Set<string>();
 
@@ -68,6 +84,24 @@ export function aggregate(all: StoredEvent[]): Stats {
   };
 
   for (const e of all) {
+    if (e.type === "click") {
+      // 같은 페이지의 같은 요소끼리 묶는다
+      const key = `${e.page}|${e.selector}`;
+      const c = clicks.get(key) ?? {
+        page: e.page,
+        selector: e.selector,
+        label: e.label,
+        href: e.href,
+        clicks: 0,
+        last: 0,
+        sids: new Set<string>(),
+      };
+      c.clicks++;
+      c.sids.add(e.sid);
+      c.last = Math.max(c.last, e.ts);
+      clicks.set(key, c);
+      continue;
+    }
     const p = pageOf(e.page);
     if (!isStuck(e)) {
       p.visits.add(e.sid);
@@ -83,7 +117,18 @@ export function aggregate(all: StoredEvent[]): Stats {
     const key = `${e.type}|${e.page}|${e.selector}`;
     let s = spots.get(key);
     if (!s) {
-      s = { type: e.type, page: e.page, selector: e.selector, label: e.label, events: 0, sessions: 0, last: 0, sids: new Set(), countSum: 0, msgs: new Map() };
+      s = {
+        type: e.type,
+        page: e.page,
+        selector: e.selector,
+        label: e.label,
+        events: 0,
+        sessions: 0,
+        last: 0,
+        sids: new Set(),
+        countSum: 0,
+        msgs: new Map(),
+      };
       spots.set(key, s);
     }
     s.events++;
@@ -140,6 +185,9 @@ export function aggregate(all: StoredEvent[]): Stats {
           .sort((a, b) => b.count - a.count),
       }))
       .sort((a, b) => b.abandons - a.abandons),
+    clicks: [...clicks.values()]
+      .map(({ sids, ...c }) => ({ ...c, visitors: sids.size }))
+      .sort((a, b) => b.visitors - a.visitors || b.clicks - a.clicks),
     recent: stuck.slice(0, 20),
   };
 }

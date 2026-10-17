@@ -1,6 +1,6 @@
 import { aggregate } from "@/lib/aggregate";
 import { getStore } from "@/lib/store";
-import { allowedKeys } from "@/lib/validate";
+import { allowedKeys, canView } from "@/lib/validate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +13,7 @@ export async function GET(req: Request) {
   const key = url.searchParams.get("key") || "demo";
   const range = RANGES[url.searchParams.get("range") || "all"] ?? RANGES.all!;
   if (!allowedKeys().includes(key)) return Response.json({ error: "unknown key" }, { status: 404 });
+  if (!canView(key, url.searchParams.get("token"))) return Response.json({ error: "private" }, { status: 403 });
 
   const events = await getStore().list(key, Number.isFinite(range) ? Date.now() - range : 0, 5000);
   return Response.json(aggregate(events), { headers: { "Cache-Control": "no-store" } });

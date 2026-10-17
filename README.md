@@ -44,7 +44,12 @@ const sp = init({ endpoint: "https://<배포 주소>/api/collect", projectKey: "
 | `rageClicks` / `rageWindow` | `3` / `800` | 분노 클릭 기준 |
 | `deadDelay` | `1000` | 반응을 기다리는 시간(ms) |
 | `ignore` | – | 이 선택자 안의 요소 · 변화는 무시 |
+| `trackClicks` | `false` | 링크 · 버튼 클릭도 기록 (script 태그는 `data-clicks="true"`). 링크는 이동 주소를 쿼리 없이 남김 |
 | `onEvent` | – | 감지될 때마다 호출. `false`를 돌려주면 보내지 않음 |
+
+- 이름표: `data-stuckpoint-label="한평생 오피스 · 프로젝트 보기"`처럼 붙이면 같은 글자의 버튼도 구분됩니다.
+- 내 방문 빼기: 주소에 `?stuckpoint=off`를 붙여 한 번 열면 그 브라우저는 계속 빠집니다 (`?stuckpoint=on`으로 되돌림). 자동화 브라우저(`navigator.webdriver`)는 기록하지 않습니다.
+- 대시보드: `PUBLIC_KEYS`(기본 `demo`)만 공개이고, 나머지 프로젝트는 `/dashboard?key=<키>&token=<DASHBOARD_TOKEN>`으로만 볼 수 있습니다.
 
 ## 설계하면서 고민한 것
 

@@ -28,7 +28,21 @@ function ago(ts: number) {
  * projectKey: 지금 보는 프로젝트 (주소의 ?key=). projects: 이 서버가 받는 프로젝트 목록.
  * demo 프로젝트에만 "화면 위에서 보기"와 고치기 전후 비교가 있다 (같은 도메인의 데모 페이지라 iframe으로 띄울 수 있어서).
  */
-export default function Dashboard({ projectKey, projects, origin }: { projectKey: string; projects: string[]; origin: string }) {
+export default function Dashboard({
+  projectKey,
+  projects,
+  origin,
+  token,
+  locked,
+}: {
+  projectKey: string;
+  projects: string[];
+  origin: string;
+  /** 비공개 프로젝트를 볼 때 주소에 붙은 토큰 (API 요청과 프로젝트 전환에 그대로 넘긴다) */
+  token?: string;
+  /** 요청한 프로젝트가 비공개라서 대신 demo를 보여주는 중 */
+  locked?: boolean;
+}) {
   const router = useRouter();
   const isDemo = projectKey === "demo";
   const [range, setRange] = useState("all");
@@ -42,7 +56,10 @@ export default function Dashboard({ projectKey, projects, origin }: { projectKey
     setStats(null);
     const load = async () => {
       try {
-        const res = await fetch(`/api/stats?key=${encodeURIComponent(projectKey)}&range=${range}`, { cache: "no-store" });
+        const res = await fetch(
+          `/api/stats?key=${encodeURIComponent(projectKey)}&range=${range}${token ? `&token=${encodeURIComponent(token)}` : ""}`,
+          { cache: "no-store" },
+        );
         if (!res.ok) throw new Error(String(res.status));
         const data = (await res.json()) as Stats;
         if (alive) {
@@ -59,9 +76,10 @@ export default function Dashboard({ projectKey, projects, origin }: { projectKey
       alive = false;
       clearInterval(t);
     };
-  }, [range, projectKey]);
+  }, [range, projectKey, token]);
 
-  const empty = stats && stats.total === 0;
+  // 막힘이 0건이어도 방문 · 클릭 기록이 있으면 비어 있는 게 아니다
+  const empty = stats && stats.total === 0 && stats.visits === 0 && stats.clicks.length === 0;
   const broken = stats?.pages.find((p) => p.page === "/demo");
   const fixed = stats?.pages.find((p) => p.page === "/demo/fixed");
   const rate = (p?: { visits: number; stuckVisits: number }) => (p && p.visits ? `${Math.round((p.stuckVisits / p.visits) * 100)}%` : "–");
@@ -75,7 +93,12 @@ export default function Dashboard({ projectKey, projects, origin }: { projectKey
           </Link>
           <label className={s.project}>
             <span>프로젝트</span>
-            <select value={projectKey} onChange={(e) => router.push(`/dashboard?key=${encodeURIComponent(e.target.value)}`)}>
+            <select
+              value={projectKey}
+              onChange={(e) =>
+                router.push(`/dashboard?key=${encodeURIComponent(e.target.value)}${token ? `&token=${encodeURIComponent(token)}` : ""}`)
+              }
+            >
               {projects.map((k) => (
                 <option key={k} value={k}>
                   {k}
@@ -103,6 +126,7 @@ export default function Dashboard({ projectKey, projects, origin }: { projectKey
       </header>
 
       <main className={s.main}>
+        {locked && <p className={s.note}>요청한 프로젝트는 비공개라서 데모를 보여드려요.</p>}
         {failed && !stats && <p className={s.note}>통계를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>}
 
         {/* 요약 */}
@@ -130,43 +154,75 @@ export default function Dashboard({ projectKey, projects, origin }: { projectKey
               <Link href="/demo">불편한 결제 화면에서 막혀 보기 →</Link>
             ) : (
               <pre className={s.snippet}>{`<script src="${origin}/stuckpoint.global.js"
-        data-key="${projectKey}" defer></script>`}</pre>
+        data-key="${projectKey}" data-clicks="true" defer></script>`}</pre>
             )}
           </section>
         )}
 
         {stats && !empty && (
           <>
+            {/* 많이 누른 곳 (trackClicks) */}
+            {stats.clicks.length > 0 && (
+              <section className={s.section}>
+                <div className={s.section_head}>
+                  <h2>많이 누른 곳</h2>
+                  <p>누른 방문자 수 순서예요. 링크는 이동한 주소를 함께 보여줘요.</p>
+                </div>
+                <ol className={s.spots}>
+                  {stats.clicks.slice(0, 15).map((c) => (
+                    <li key={`${c.page}|${c.selector}`} className={s.spot}>
+                      <div className={s.spot_main}>
+                        <b>{c.label}</b>
+                        <code>
+                          {c.page}
+                          {c.href ? ` → ${c.href}` : ` · ${c.selector}`}
+                        </code>
+                      </div>
+                      <div className={s.spot_num}>
+                        <b>{c.visitors}</b>
+                        <span>명</span>
+                        <em>
+                          {c.clicks}번 · {ago(c.last)}
+                        </em>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+
             {/* 가장 많이 막힌 곳 */}
-            <section className={s.section}>
-              <div className={s.section_head}>
-                <h2>가장 많이 막힌 곳</h2>
-                <p>여러 방문자가 겪은 순서대로 정렬했어요.</p>
-              </div>
-              <ol className={s.spots}>
-                {stats.hotspots.slice(0, 8).map((h) => (
-                  <li key={`${h.type}|${h.page}|${h.selector}`} className={s.spot}>
-                    <div className={s.spot_main}>
-                      <span className={s.spot_type}>
-                        <i className={`dot dot-${h.type}`} /> {TYPE_INFO[h.type].name}
-                      </span>
-                      <b>{h.label}</b>
-                      <code>
-                        {h.page} · {h.selector}
-                      </code>
-                      {h.message && <span className={s.spot_msg}>{h.message}</span>}
-                    </div>
-                    <div className={s.spot_num}>
-                      <b>{h.sessions}</b>
-                      <span>방문</span>
-                      <em>
-                        {h.events}회{h.avgCount ? ` · 평균 ${h.avgCount}번 연타` : ""} · {ago(h.last)}
-                      </em>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </section>
+            {stats.total > 0 && (
+              <section className={s.section}>
+                <div className={s.section_head}>
+                  <h2>가장 많이 막힌 곳</h2>
+                  <p>여러 방문자가 겪은 순서대로 정렬했어요.</p>
+                </div>
+                <ol className={s.spots}>
+                  {stats.hotspots.slice(0, 8).map((h) => (
+                    <li key={`${h.type}|${h.page}|${h.selector}`} className={s.spot}>
+                      <div className={s.spot_main}>
+                        <span className={s.spot_type}>
+                          <i className={`dot dot-${h.type}`} /> {TYPE_INFO[h.type].name}
+                        </span>
+                        <b>{h.label}</b>
+                        <code>
+                          {h.page} · {h.selector}
+                        </code>
+                        {h.message && <span className={s.spot_msg}>{h.message}</span>}
+                      </div>
+                      <div className={s.spot_num}>
+                        <b>{h.sessions}</b>
+                        <span>방문</span>
+                        <em>
+                          {h.events}회{h.avgCount ? ` · 평균 ${h.avgCount}번 연타` : ""} · {ago(h.last)}
+                        </em>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
 
             {/* 페이지별 (모든 프로젝트) */}
             {!isDemo && (
@@ -218,35 +274,37 @@ export default function Dashboard({ projectKey, projects, origin }: { projectKey
             )}
 
             <div className={isDemo ? s.two : undefined}>
-              {/* 폼 이탈 */}
-              <section className={s.section}>
-                <div className={s.section_head}>
-                  <h2>폼 이탈 지점</h2>
-                  <p>제출하지 않고 떠날 때 마지막으로 머문 칸이에요.</p>
-                </div>
-                {stats.forms.length === 0 && <p className={s.note}>아직 폼 이탈이 없어요.</p>}
-                {stats.forms.map((f) => (
-                  <div key={`${f.page}|${f.form}`} className={s.form}>
-                    <p className={s.form_title}>
-                      <code>
-                        {f.page} · {f.form}
-                      </code>
-                      <span>{f.abandons}번 이탈</span>
-                    </p>
-                    {f.fields.map((fl) => (
-                      <div key={fl.field} className={s.bar}>
-                        <span className={s.bar_label}>{fl.label}</span>
-                        <div className={s.bar_track}>
-                          <div style={{ width: `${(fl.count / f.abandons) * 100}%` }} />
-                        </div>
-                        <span className={s.bar_num}>
-                          {fl.count} <em>· 평균 {Math.round(fl.avgProgress * 100)}% 작성</em>
-                        </span>
-                      </div>
-                    ))}
+              {/* 폼 이탈 (데모는 늘, 다른 프로젝트는 기록이 있을 때만) */}
+              {(isDemo || stats.forms.length > 0) && (
+                <section className={s.section}>
+                  <div className={s.section_head}>
+                    <h2>폼 이탈 지점</h2>
+                    <p>제출하지 않고 떠날 때 마지막으로 머문 칸이에요.</p>
                   </div>
-                ))}
-              </section>
+                  {stats.forms.length === 0 && <p className={s.note}>아직 폼 이탈이 없어요.</p>}
+                  {stats.forms.map((f) => (
+                    <div key={`${f.page}|${f.form}`} className={s.form}>
+                      <p className={s.form_title}>
+                        <code>
+                          {f.page} · {f.form}
+                        </code>
+                        <span>{f.abandons}번 이탈</span>
+                      </p>
+                      {f.fields.map((fl) => (
+                        <div key={fl.field} className={s.bar}>
+                          <span className={s.bar_label}>{fl.label}</span>
+                          <div className={s.bar_track}>
+                            <div style={{ width: `${(fl.count / f.abandons) * 100}%` }} />
+                          </div>
+                          <span className={s.bar_num}>
+                            {fl.count} <em>· 평균 {Math.round(fl.avgProgress * 100)}% 작성</em>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </section>
+              )}
 
               {/* 고치기 전후 (demo) */}
               {isDemo && (
@@ -274,24 +332,26 @@ export default function Dashboard({ projectKey, projects, origin }: { projectKey
               )}
             </div>
 
-            {/* 실시간 기록 */}
-            <section className={s.section}>
-              <div className={s.section_head}>
-                <h2>실시간 기록</h2>
-                <p>최근 20건</p>
-              </div>
-              <ul className={s.feed}>
-                {stats.recent.map((e, i) => (
-                  <li key={`${e.sid}-${e.ts}-${i}`}>
-                    <i className={`dot dot-${e.type}`} />
-                    <span className={s.feed_type}>{TYPE_INFO[e.type].name}</span>
-                    <b>{e.label}</b>
-                    <span className={s.feed_page}>{e.page}</span>
-                    <time>{ago(e.ts)}</time>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {/* 실시간 막힘 기록 */}
+            {stats.recent.length > 0 && (
+              <section className={s.section}>
+                <div className={s.section_head}>
+                  <h2>실시간 기록</h2>
+                  <p>최근 20건</p>
+                </div>
+                <ul className={s.feed}>
+                  {stats.recent.map((e, i) => (
+                    <li key={`${e.sid}-${e.ts}-${i}`}>
+                      <i className={`dot dot-${e.type}`} />
+                      <span className={s.feed_type}>{TYPE_INFO[e.type].name}</span>
+                      <b>{e.label}</b>
+                      <span className={s.feed_page}>{e.page}</span>
+                      <time>{ago(e.ts)}</time>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </>
         )}
       </main>

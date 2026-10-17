@@ -27,6 +27,7 @@ type Row = {
   filled: number | null;
   total: number | null;
   message: string | null;
+  href: string | null;
   sid: string;
   ts: string;
 };
@@ -45,6 +46,7 @@ const toRow = (e: StoredEvent): Row => ({
   filled: e.filled ?? null,
   total: e.total ?? null,
   message: e.message ?? null,
+  href: e.href ?? null,
   sid: e.sid,
   ts: new Date(e.ts).toISOString(),
 });
@@ -63,6 +65,7 @@ const fromRow = (r: Row): StoredEvent => ({
   filled: r.filled ?? undefined,
   total: r.total ?? undefined,
   message: r.message ?? undefined,
+  href: r.href ?? undefined,
   sid: r.sid,
   ts: new Date(r.ts).getTime(),
 });
@@ -76,7 +79,7 @@ function supabaseStore(db: SupabaseClient): Store {
     async list(projectKey, sinceMs, limit) {
       const { data, error } = await db
         .from("stuck_events")
-        .select("project_key,type,page,selector,label,x,y,vw,count,field,filled,total,message,sid,ts")
+        .select("project_key,type,page,selector,label,x,y,vw,count,field,filled,total,message,href,sid,ts")
         .eq("project_key", projectKey)
         .gte("ts", new Date(sinceMs).toISOString())
         .order("ts", { ascending: false })

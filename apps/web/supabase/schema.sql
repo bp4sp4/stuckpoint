@@ -2,7 +2,7 @@
 create table if not exists public.stuck_events (
   id bigint generated always as identity primary key,
   project_key text not null,
-  type text not null check (type in ('rage_click', 'dead_click', 'form_abandon', 'error_click', 'visit')),
+  type text not null check (type in ('rage_click', 'dead_click', 'form_abandon', 'error_click', 'visit', 'click')),
   page text not null,
   selector text not null,
   label text not null,
@@ -14,6 +14,7 @@ create table if not exists public.stuck_events (
   filled integer,
   total integer,
   message text,
+  href text,
   sid text not null,
   ts timestamptz not null,
   created_at timestamptz not null default now()

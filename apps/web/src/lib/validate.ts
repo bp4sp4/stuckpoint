@@ -1,18 +1,36 @@
 import type { StuckEvent, StuckType } from "stuckpoint";
 
-/** 막힘 이벤트와 방문 기록을 같은 모양으로 저장한다 (방문은 selector · label이 빈 값) */
-export type EventType = StuckType | "visit";
-export type StoredEvent = Omit<StuckEvent, "type"> & { type: EventType; projectKey: string };
+/** 막힘 · 방문 · 클릭을 같은 모양으로 저장한다 (방문은 selector · label이 빈 값, href는 클릭한 링크의 이동 주소) */
+export type EventType = StuckType | "visit" | "click";
+export type StoredEvent = Omit<StuckEvent, "type"> & { type: EventType; projectKey: string; href?: string };
 
-const TYPES: EventType[] = ["rage_click", "dead_click", "form_abandon", "error_click", "visit"];
+const TYPES: EventType[] = ["rage_click", "dead_click", "form_abandon", "error_click", "visit", "click"];
 const MAX_EVENTS = 50;
 
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");
 const int = (v: unknown, min = 0, max = 1_000_000) =>
   typeof v === "number" && Number.isFinite(v) ? Math.min(max, Math.max(min, Math.round(v))) : undefined;
 
+/** 누구나 대시보드를 볼 수 있는 프로젝트 (나머지는 DASHBOARD_TOKEN이 있어야 볼 수 있다) */
+export function publicKeys(): string[] {
+  return (process.env.PUBLIC_KEYS || "demo")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+}
+
+/** 이 프로젝트의 통계를 볼 수 있는지 */
+export function canView(key: string, token: string | null | undefined): boolean {
+  if (publicKeys().includes(key)) return true;
+  const secret = process.env.DASHBOARD_TOKEN;
+  return !!secret && token === secret;
+}
+
 export function allowedKeys(): string[] {
-  return (process.env.ALLOWED_KEYS || "demo,portfolio").split(",").map((k) => k.trim()).filter(Boolean);
+  return (process.env.ALLOWED_KEYS || "demo,portfolio")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
 }
 
 /**
@@ -56,6 +74,7 @@ export function parseBatch(raw: string): StoredEvent[] {
       filled: int(ev.filled, 0, 500),
       total: int(ev.total, 0, 500),
       message: str(ev.message, 120) || undefined,
+      href: str(ev.href, 300) || undefined,
       sid,
       // 시계가 틀린 기기도 있으므로 미래 시각은 서버 시각으로 바꾼다
       ts: ts && ts <= now + 60_000 ? ts : now,

@@ -1,3 +1,4 @@
+import { clickDetector } from "./detectors/click";
 import { deadDetector } from "./detectors/dead";
 import { errorDetector } from "./detectors/error";
 import { formDetector } from "./detectors/form";
@@ -5,7 +6,7 @@ import { rageDetector } from "./detectors/rage";
 import { createTransport } from "./transport";
 import type { Detector, Emit, StuckEvent, StuckpointOptions } from "./types";
 
-export type { Payload, StuckEvent, StuckpointOptions, StuckType, VisitEvent } from "./types";
+export type { ClickEvent, Payload, StuckEvent, StuckpointOptions, StuckType, VisitEvent } from "./types";
 export { getLabel, getSelector } from "./selector";
 
 export interface StuckpointInstance {
@@ -32,6 +33,23 @@ function session(sampleRate: number): { sid: string; sampled: boolean } {
   } catch {
     // 시크릿 모드 등 저장소가 막혀 있으면 이 페이지에서만 쓰는 id
     return { sid: make(), sampled: Math.random() < sampleRate };
+  }
+}
+
+/**
+ * 기록하지 않을 방문인지.
+ * - 사이트 주인: 주소에 ?stuckpoint=off 를 한 번 붙여 열면 이 브라우저는 계속 빠진다 (?stuckpoint=on 으로 되돌림)
+ * - 자동화 브라우저(navigator.webdriver): 테스트 · 크롤러가 통계를 오염시키지 않게
+ */
+function optedOut(): boolean {
+  if (navigator.webdriver) return true;
+  try {
+    const flag = new URLSearchParams(location.search).get("stuckpoint");
+    if (flag === "off") localStorage.setItem("stuckpoint:optout", "1");
+    if (flag === "on") localStorage.removeItem("stuckpoint:optout");
+    return localStorage.getItem("stuckpoint:optout") === "1";
+  } catch {
+    return false;
   }
 }
 
@@ -70,10 +88,19 @@ function watchRoute(onChange: (page: string) => void): () => void {
     notify();
   };
   window.addEventListener("popstate", notify);
+  // 프레임워크가 감싸기 전의 원래 pushState를 직접 부르면(Next.js App Router 등) 위 감싸기가 못 본다 → 1초마다 경로도 확인
+  let last = location.pathname;
+  const poll = setInterval(() => {
+    if (location.pathname !== last) {
+      last = location.pathname;
+      onChange(last);
+    }
+  }, 1000);
   return () => {
     history.pushState = pushState;
     history.replaceState = replaceState;
     window.removeEventListener("popstate", notify);
+    clearInterval(poll);
   };
 }
 
@@ -87,6 +114,7 @@ function watchRoute(onChange: (page: string) => void): () => void {
  */
 export function init(options: StuckpointOptions): StuckpointInstance {
   if (typeof window === "undefined" || typeof document === "undefined") return NOOP; // SSR
+  if (optedOut()) return NOOP;
 
   const { sid, sampled } = session(options.sampleRate ?? 1);
   if (!sampled) return NOOP;
@@ -113,6 +141,9 @@ export function init(options: StuckpointOptions): StuckpointInstance {
     errorDetector(emit, { ignore }),
     formDetector(emit, { ignore }),
   ];
+  if (options.trackClicks) {
+    detectors.push(clickDetector((e) => transport.push({ ...e, vw: window.innerWidth, sid, ts: Date.now() }), { ignore }));
+  }
 
   // 방문: 경로마다 한 번. SPA 이동(pushState · replaceState · 뒤로가기)도 따라간다
   const visited = visitedPages();
