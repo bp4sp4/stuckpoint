@@ -1,0 +1,10 @@
+node_modules
+dist
+.next
+.data
+.env*.local
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+.next-build
+apps/web/public/stuckpoint.global.js

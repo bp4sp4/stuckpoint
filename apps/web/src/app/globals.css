@@ -1,0 +1,68 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+
+:root {
+  --bg: #ffffff;
+  --bg-soft: #f4f6f8;
+  --line: #e5e8eb;
+  --text: #191f28;
+  --sub: #4e5968;
+  --mute: #8b95a1;
+  --blue: #3182f6;
+  --blue-soft: #e8f3ff;
+  --rage: #f04452;
+  --dead: #ff9f1a;
+  --form: #8b5cf6;
+  --error: #0ea5a4;
+  --radius: 16px;
+  --pad: clamp(16px, 4vw, 40px);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  word-break: keep-all;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+code,
+pre {
+  font-family: var(--mono);
+}
+
+/* 막힘 종류별 색 점 */
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+.dot-rage_click { background: var(--rage); }
+.dot-dead_click { background: var(--dead); }
+.dot-form_abandon { background: var(--form); }
+.dot-error_click { background: var(--error); }

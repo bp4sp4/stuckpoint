@@ -1,0 +1,32 @@
+{
+  "name": "stuckpoint",
+  "version": "0.1.0",
+  "description": "사용자가 막히는 순간(분노 클릭 · 반응 없는 클릭 · 폼 이탈 · 클릭 후 오류)을 감지하는 가벼운 브라우저 SDK",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.1",
+    "tsup": "^8.3.5",
+    "typescript": "5.9.3",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,380 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg-soft);
+  padding-bottom: 80px;
+}
+
+.embed {
+  padding-bottom: 24px;
+}
+
+/* ---------- 체험 안내 띠 ---------- */
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--text);
+  color: #fff;
+}
+
+.banner_in {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 12px var(--pad);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.banner_in p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.banner_in b {
+  color: #fff;
+}
+
+.banner_in nav {
+  display: flex;
+  gap: 18px;
+  white-space: nowrap;
+}
+
+.banner_in nav a {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.banner_in nav a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.banner_in nav .banner_strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ---------- 가상의 쇼핑몰 ---------- */
+.shop {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 28px var(--pad) 0;
+}
+
+.shop_head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.step {
+  font-size: 14px;
+  color: var(--mute);
+}
+
+.step b {
+  color: var(--text);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: start;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 24px;
+}
+
+.card h2 {
+  margin: 0 0 16px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.product {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+/* 손가락 커서 = 눌릴 거라는 약속 (고장 버전은 이 약속을 어긴다) */
+.thumb {
+  flex: none;
+  width: 96px;
+  height: 96px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f3e9dc, #e2d3bf);
+  display: grid;
+  place-items: center;
+  font-size: 44px;
+  cursor: pointer;
+}
+
+.product_info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.product_info span {
+  font-size: 14px;
+  color: var(--mute);
+}
+
+.qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  width: fit-content;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 2px 4px;
+}
+
+.qty button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: none;
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.qty button:hover {
+  background: var(--bg-soft);
+}
+
+.price {
+  font-size: 17px;
+  white-space: nowrap;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.row_between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  font-size: 15px;
+  color: var(--sub);
+}
+
+.input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font: inherit;
+  background: #fff;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--blue);
+}
+
+.ghost {
+  flex: none;
+  height: 48px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--bg-soft);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.link_btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--blue);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.field {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.field span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: var(--sub);
+}
+
+.hint {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--blue);
+}
+
+.error {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--rage);
+}
+
+.summary {
+  position: sticky;
+  top: 72px;
+}
+
+.summary dl {
+  margin: 0 0 20px;
+}
+
+.summary dl div {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 15px;
+}
+
+.summary dt {
+  color: var(--sub);
+}
+
+.summary dd {
+  margin: 0;
+}
+
+.summary .total {
+  margin-top: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.summary .total dt {
+  color: var(--text);
+}
+
+.pay {
+  width: 100%;
+  height: 56px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pay:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.6);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  color: #fff;
+  font-size: 160px;
+  cursor: pointer;
+}
+
+.zoom p {
+  margin: 0;
+  font-size: 15px;
+}
+
+/* ---------- 감지 토스트 ---------- */
+.toasts {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(340px, calc(100vw - 40px));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--text);
+  color: #fff;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  animation: rise 0.25s ease-out;
+}
+
+.toast i {
+  margin-top: 8px;
+}
+
+.toast b {
+  display: block;
+  font-size: 14px;
+}
+
+.toast span {
+  display: block;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@media (max-width: 860px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .summary {
+    position: static;
+  }
+}
