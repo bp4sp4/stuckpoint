@@ -6,8 +6,8 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build -w stuckpoint && npm run build -w web",
-    "dev": "npm run build -w stuckpoint && npm run dev -w web",
+    "build": "npm run build -w web",
+    "dev": "npm run dev -w web",
     "test": "npm test -w stuckpoint"
   }
 }

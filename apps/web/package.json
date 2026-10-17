@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "sdk": "node scripts/copy-sdk.mjs",
+    "sdk": "npm run build --prefix ../../packages/sdk && node scripts/copy-sdk.mjs",
     "dev": "npm run sdk && next dev --turbopack -p 3100",
     "build": "npm run sdk && next build",
     "start": "next start",

@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import { TYPE_INFO, TYPES } from "@/lib/labels";
 import s from "./home.module.css";
@@ -11,7 +12,16 @@ const EXAMPLES: Record<string, string> = {
   error_click: "포인트 사용을 눌렀는데 응답 모양이 바뀌어 오류가 나고, 화면은 그대로입니다.",
 };
 
-export default function Home() {
+/** 설치 예시에 지금 열려 있는 주소를 그대로 넣는다 (배포 주소가 바뀌어도 맞게) */
+async function origin() {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") || h.get("host") || "localhost:3100";
+  const proto = h.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+export default async function Home() {
+  const base = await origin();
   return (
     <div className={s.page}>
       <header className={s.nav}>
@@ -70,7 +80,7 @@ export default function Home() {
               <p className={s.install_label}>script 태그 한 줄</p>
               <pre>
                 <code>{`<script
-  src="https://stuckpoint.vercel.app/stuckpoint.global.js"
+  src="${base}/stuckpoint.global.js"
   data-key="my-site"
   defer
 ></script>`}</code>
@@ -82,7 +92,7 @@ export default function Home() {
                 <code>{`import { init } from "stuckpoint";
 
 init({
-  endpoint: "https://stuckpoint.vercel.app/api/collect",
+  endpoint: "${base}/api/collect",
   projectKey: "my-site",
 });`}</code>
               </pre>
